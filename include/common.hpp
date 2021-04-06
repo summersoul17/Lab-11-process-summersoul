@@ -41,7 +41,6 @@ namespace po = boost::program_options;
 #include <string>
 
 class settings {
-
  public:
   const std::string BUILD_TARGET = "_builds";
   const std::string INSTALL_TARGET = "_install";
@@ -60,6 +59,7 @@ class settings {
   bool _install,
        _pack;
  public:
+
   std::string get_command(const std::string& target){
     if (target == "config") {
       return (" -B" + BUILD_TARGET + " -DCMAKE_INSTALL_PREFIX=" +
