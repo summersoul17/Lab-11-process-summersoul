@@ -134,7 +134,6 @@ void timeout_handler(thread_data& _pdata) {
     }
     _pdata.set_bool(true);
     BOOST_LOG_TRIVIAL(debug) << "_pdata set: " << _pdata._terminated;
-
   } catch (const std::exception& e) {
     BOOST_LOG_TRIVIAL(fatal) << "Terminating error: " << e.what()
                              << " Process: " << _pdata._current_child.id();
