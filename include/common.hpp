@@ -39,6 +39,7 @@ namespace po = boost::program_options;
 #include <filesystem>
 
 #include <string>
+#include <utility>
 
 class settings {
  public:
@@ -75,13 +76,15 @@ class settings {
 struct thread_data {
   thread_data() = delete;
 
-  thread_data(bool term, boost::process::child&& child){
+  thread_data(bool term, boost::process::child&& child) {
     _terminated.store(term);
     _current_child = std::move(child);
   }
 
-  void set_bool(bool term){ _terminated.store(term); }
-  void set_child(boost::process::child&& child){ _current_child = std::move(child); }
+  void set_bool(bool term) { _terminated.store(term); }
+  void set_child(boost::process::child&& child) {
+    _current_child = std::move(child);
+  }
 
   std::atomic_bool _terminated = false;
   boost::process::child _current_child;

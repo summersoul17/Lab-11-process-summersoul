@@ -27,8 +27,8 @@ int builder::vmain(boost::program_options::variables_map&& vm) {
   //  std::this_thread::sleep_for(std::chrono::seconds(10));
   std::unique_ptr<timer> _timer;
   if (_psettings->time() != -1) {
-    _timer = std::make_unique<timer>(
-        timer(std::chrono::seconds(_psettings->time()), timeout_handler, _pdata));
+    _timer = std::make_unique<timer>(timer(
+        std::chrono::seconds(_psettings->time()), timeout_handler, _pdata));
   }
   // execute processes
   try {
@@ -68,8 +68,9 @@ int builder::vmain(boost::program_options::variables_map&& vm) {
 }
 
 bool builder::spawn_proc(const std::string& target, thread_data& _pdata) {
-//  std::this_thread::sleep_for(std::chrono::seconds(1));
-  BOOST_LOG_TRIVIAL(debug) << " _pdata->_terminated: " << bool(_pdata._terminated);
+  //  std::this_thread::sleep_for(std::chrono::seconds(1));
+  BOOST_LOG_TRIVIAL(debug) << " _pdata->_terminated: "
+                           << bool(_pdata._terminated);
   if (_pdata._terminated) {
     BOOST_LOG_TRIVIAL(debug) << "Previous process terminated. Returning..";
     return false;
@@ -131,8 +132,8 @@ void timeout_handler(thread_data& _pdata) {
     if (_pdata._current_child.running()) {
       _pdata._current_child.terminate();
     }
-      _pdata.set_bool(true);
-      BOOST_LOG_TRIVIAL(debug) << "_pdata set: " << _pdata._terminated;
+    _pdata.set_bool(true);
+    BOOST_LOG_TRIVIAL(debug) << "_pdata set: " << _pdata._terminated;
 
   } catch (const std::exception& e) {
     BOOST_LOG_TRIVIAL(fatal) << "Terminating error: " << e.what()
@@ -158,7 +159,8 @@ void builder::read_settings(boost::program_options::variables_map&& vm) {
         << "Timeout args got: " << vm["timeout"].as<int>() << ". Setting timer";
     time = vm["timeout"].as<int>();
   }
-  _psettings = std::make_unique<settings>(settings((config), install, pack, time));
+  _psettings =
+      std::make_unique<settings>(settings((config), install, pack, time));
 }
 
 void log_setup::init() {
