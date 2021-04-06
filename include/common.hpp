@@ -1,5 +1,7 @@
-#ifndef BUILDER_COMMON_HPP_
-#define BUILDER_COMMON_HPP_
+// Copyright 2021 Lamp
+
+#ifndef INCLUDE_COMMON_HPP_
+#define INCLUDE_COMMON_HPP_
 
 
 // JSON - parser
@@ -36,7 +38,10 @@ namespace po = boost::program_options;
 
 #include <filesystem>
 
+#include <string>
+
 class settings {
+
  public:
   const std::string BUILD_TARGET = "_builds";
   const std::string INSTALL_TARGET = "_install";
@@ -48,9 +53,10 @@ class settings {
   settings(const std::string& config, bool install, bool pack)
       :_config(config), _install(install), _pack(pack){
   }
- private:
 
-  std::string _config;
+ private:
+  std::string _config,
+      _source_path;
   bool _install,
        _pack;
  public:
@@ -77,4 +83,4 @@ namespace log_setup {
   void init();
 }
 
-#endif // BUILDER_COMMON_HPP_
+#endif // INCLUDE_COMMON_HPP_

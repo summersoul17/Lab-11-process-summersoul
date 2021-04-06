@@ -3,16 +3,18 @@
 #include <builder.hpp>
 
 builder::builder() {
-  _desc.add_options()
-      ("help,h", "Shows help info")
-      ("config,c", boost::program_options::value<std::string>(), "Sets build configuration <Debug/Release>. Debug is default")
-      ("install,i", "Sets install step on")
-      ("pack,p", "Sets pack step on")
-      ("timeout,t", boost::program_options::value<int>(), "Sets timer (seconds)");
+  _desc.add_options()("help,h", "Shows help info")(
+      "source,s", boost::program_options::value<std::string>(),
+      "Sets directory where the project is")(
+      "config,c", boost::program_options::value<std::string>(),
+      "Sets build configuration <Debug/Release>. Debug is default")(
+      "install,i", "Sets install step on")("pack,p", "Sets pack step on")(
+      "timeout,t", boost::program_options::value<int>(),
+      "Sets timer (seconds)");
 }
 
-int builder::vmain(boost::program_options::variables_map&& vm){
-  if (vm.count("help")){
+int builder::vmain(boost::program_options::variables_map&& vm) {
+  if (vm.count("help")) {
     BOOST_LOG_TRIVIAL(info) << "Help called";
     std::cout << print_help();
     return 0;
@@ -22,19 +24,25 @@ int builder::vmain(boost::program_options::variables_map&& vm){
 
   // execute processes
   try {
-    if (!_pdata){
+    if (!_pdata) {
       BOOST_LOG_TRIVIAL(fatal) << "Pdata is not exist";
     }
-    auto pack = async::spawn([this]() -> bool { return spawn_proc("config");});
-    auto build = pack.then([this](async::task<bool> result){
-      return spawn_proc("build") && result.get();});
-    if (_psettings->install()){
-      build.then([this](async::task<bool> result){ return spawn_proc("install") && result.get(); });
+    auto pack = async::spawn
+        ([this]() -> bool { return spawn_proc("config"); });
+    auto build = pack.then([this](async::task<bool> result) {
+      return spawn_proc("build") && result.get();
+    });
+    if (_psettings->install()) {
+      build.then([this](async::task<bool> result) {
+        return spawn_proc("install") && result.get();
+      });
     }
-    if (_psettings->pack()){
-      build.then([this](async::task<bool> result){ return spawn_proc("pack") && result.get(); });
+    if (_psettings->pack()) {
+      build.then([this](async::task<bool> result) {
+        return spawn_proc("pack") && result.get();
+      });
     }
-  } catch (const std::exception& e){
+  } catch (const std::exception& e) {
     BOOST_LOG_TRIVIAL(fatal) << "ERROR: " << e.what();
   }
 
@@ -43,7 +51,7 @@ int builder::vmain(boost::program_options::variables_map&& vm){
 
 bool builder::spawn_proc(const std::string& target) {
   if (_pdata) {
-    if(!_pdata->_terminated){
+    if (!_pdata->_terminated) {
       BOOST_LOG_TRIVIAL(debug) << "Previous process terminated. Returning..";
       return false;
     }
@@ -57,7 +65,8 @@ bool builder::spawn_proc(const std::string& target) {
       std::string(cmake_path.string() + " " + _psettings->get_command(target)),
       boost::process::std_out > stream);
 
-  _pdata = std::make_unique<thread_data>(thread_data{false, std::move(child)});
+  _pdata = std::make_unique<thread_data>
+      (thread_data{false, std::move(child)});
 
   for (std::string line;
        _pdata->_current_child.running() && std::getline(stream, line);) {
@@ -91,47 +100,45 @@ boost::program_options::variables_map builder::parse_console_args(int argc,
 
 std::string builder::print_help() {
   std::stringstream out;
-  out << "Simple cmake builder" << _desc
-  << "\n\nCopyright 2021 Lamp\n";
+  out << "Simple cmake builder" << _desc << "\n\nCopyright 2021 Lamp\n";
   return out.str();
 }
 
 
-void builder::timeout_handler(){
+void builder::timeout_handler() {
   BOOST_LOG_TRIVIAL(fatal) << "Timer timeout. Stopping all child processes...";
   // Stop child processes
   try {
-    if(_pdata->_current_child.running()){
+    if (_pdata->_current_child.running()) {
       _pdata->_current_child.terminate();
       _pdata->_terminated = true;
     }
-  } catch (const std::exception& e){
+  } catch (const std::exception& e) {
     BOOST_LOG_TRIVIAL(fatal) << "Terminating error: " << e.what()
-        << " Process: " << _pdata->_current_child.id();
+                             << " Process: " << _pdata->_current_child.id();
   }
 }
 
-void builder::read_settings(boost::program_options::variables_map&& vm){
+void builder::read_settings(boost::program_options::variables_map&& vm) {
   bool install = false, pack = false;
   std::string config = "Debug";
 
-  if (vm.count("config")){
+  if (vm.count("config")) {
     config = vm["config"].as<std::string>();
   }
-  if (vm.count("install")){
+  if (vm.count("install")) {
     install = true;
   }
-  if (vm.count("pack")){
+  if (vm.count("pack")) {
     pack = true;
   }
   if (vm.count("timeout")) {
-    BOOST_LOG_TRIVIAL(debug) << "Timeout args got: " << vm["timeout"].as<int>() << ". Setting timer";
+    BOOST_LOG_TRIVIAL(debug)
+        << "Timeout args got: " << vm["timeout"].as<int>() << ". Setting timer";
     _ptimer = std::make_unique<timer>(
         timer(std::chrono::seconds(vm["timeout"].as<int>()), this));
   }
-  _psettings = std::make_unique<settings>(settings(
-      (config), install, pack
-      ));
+  _psettings = std::make_unique<settings>(settings((config), install, pack));
 }
 
 void log_setup::init() {

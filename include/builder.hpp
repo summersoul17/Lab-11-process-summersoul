@@ -1,9 +1,12 @@
 // Copyright 2020 Your Name <your_email>
 
-#ifndef BUILDER_BUILDER_HPP_
-#define BUILDER_BUILDER_HPP_
+#ifndef INCLUDE_BUILDER_HPP_
+#define INCLUDE_BUILDER_HPP_
 
 #include <common.hpp>
+#include <string>
+#include <memory>
+#include <utility>
 
 class timer;
 
@@ -40,7 +43,7 @@ class timer {
         std::this_thread::sleep_for(std::chrono::seconds(delay));
         (*callback_obj).timeout_handler();
       }){}
-  ~timer(){ if(_timer_thread.joinable()) _timer_thread.detach(); }
+  ~timer(){ if (_timer_thread.joinable()) _timer_thread.detach(); }
 };
 
 
