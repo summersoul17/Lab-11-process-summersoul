@@ -58,8 +58,8 @@ class settings {
       _source_path;
   bool _install,
        _pack;
- public:
 
+ public:
   std::string get_command(const std::string& target){
     if (target == "config") {
       return (" -B" + BUILD_TARGET + " -DCMAKE_INSTALL_PREFIX=" +
