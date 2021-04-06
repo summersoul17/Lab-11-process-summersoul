@@ -45,19 +45,20 @@ class settings {
   const std::string BUILD_TARGET = "_builds";
   const std::string INSTALL_TARGET = "_install";
   const std::string PACK_TARGET = "package";
-  [[nodiscard]] std::string get_conifig() const { return _config; }
+  [[nodiscard]] std::string get_conifig() const { return _config;  }
   [[nodiscard]] bool        install()     const { return _install; }
-  [[nodiscard]] bool        pack()        const { return _pack; }
+  [[nodiscard]] bool        pack()        const { return _pack;    }
+  [[nodiscard]] int         time()        const { return _time;    }
 
-  settings(const std::string& config, bool install, bool pack)
-      :_config(config), _install(install), _pack(pack){
+  settings(const std::string& config, bool install, bool pack, int time)
+      :_config(config), _install(install), _pack(pack), _time(time){
   }
 
  private:
-  std::string _config,
-      _source_path;
+  std::string _config;
   bool _install,
        _pack;
+  int _time = -1;
 
  public:
   std::string get_command(const std::string& target){
@@ -72,10 +73,17 @@ class settings {
 };
 
 struct thread_data {
- public:
   thread_data() = delete;
 
-  bool _terminated = false;
+  thread_data(bool term, boost::process::child&& child){
+    _terminated.store(term);
+    _current_child = std::move(child);
+  }
+
+  void set_bool(bool term){ _terminated.store(term); }
+  void set_child(boost::process::child&& child){ _current_child = std::move(child); }
+
+  std::atomic_bool _terminated = false;
   boost::process::child _current_child;
 };
 

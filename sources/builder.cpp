@@ -13,6 +13,7 @@ builder::builder() {
       "Sets timer (seconds)");
 }
 
+void timeout_handler(thread_data&);
 int builder::vmain(boost::program_options::variables_map&& vm) {
   if (vm.count("help")) {
     BOOST_LOG_TRIVIAL(info) << "Help called";
@@ -22,25 +23,42 @@ int builder::vmain(boost::program_options::variables_map&& vm) {
 
   read_settings(std::move(vm));
 
+  thread_data _pdata{false, boost::process::child()};
+  //  std::this_thread::sleep_for(std::chrono::seconds(10));
+  std::unique_ptr<timer> _timer;
+  if (_psettings->time() != -1) {
+    _timer = std::make_unique<timer>(
+        timer(std::chrono::seconds(_psettings->time()), timeout_handler, _pdata));
+  }
   // execute processes
   try {
-    if (!_pdata) {
-      BOOST_LOG_TRIVIAL(fatal) << "Pdata is not exist";
-    }
-    auto pack = async::spawn
-        ([this]() -> bool { return spawn_proc("config"); });
-    auto build = pack.then([this](async::task<bool> result) {
-      return spawn_proc("build") && result.get();
+    std::this_thread::sleep_for(std::chrono::seconds(4));
+    std::shared_future<bool> pack = std::async([this, &_pdata]() -> bool {
+      return this->spawn_proc("config", _pdata);
     });
-    if (_psettings->install()) {
-      build.then([this](async::task<bool> result) {
-        return spawn_proc("install") && result.get();
+
+    pack.wait();
+    if (pack.get()) {
+      pack = std::async([this, &_pdata]() -> bool {
+        return this->spawn_proc("build", _pdata);
       });
+      pack.wait();
+    }
+    if (_psettings->install()) {
+      if (pack.get()) {
+        pack = std::async([this, &_pdata]() -> bool {
+          return this->spawn_proc("install", _pdata);
+        });
+        pack.wait();
+      }
     }
     if (_psettings->pack()) {
-      build.then([this](async::task<bool> result) {
-        return spawn_proc("pack") && result.get();
-      });
+      if (pack.get()) {
+        pack = std::async([this, &_pdata]() -> bool {
+          return this->spawn_proc("pack", _pdata);
+        });
+        pack.wait();
+      }
     }
   } catch (const std::exception& e) {
     BOOST_LOG_TRIVIAL(fatal) << "ERROR: " << e.what();
@@ -49,12 +67,12 @@ int builder::vmain(boost::program_options::variables_map&& vm) {
   return 0;
 }
 
-bool builder::spawn_proc(const std::string& target) {
-  if (_pdata) {
-    if (!_pdata->_terminated) {
-      BOOST_LOG_TRIVIAL(debug) << "Previous process terminated. Returning..";
-      return false;
-    }
+bool builder::spawn_proc(const std::string& target, thread_data& _pdata) {
+//  std::this_thread::sleep_for(std::chrono::seconds(1));
+  BOOST_LOG_TRIVIAL(debug) << " _pdata->_terminated: " << bool(_pdata._terminated);
+  if (_pdata._terminated) {
+    BOOST_LOG_TRIVIAL(debug) << "Previous process terminated. Returning..";
+    return false;
   }
   BOOST_LOG_TRIVIAL(info) << "Spawning target building: " << target;
 
@@ -65,21 +83,22 @@ bool builder::spawn_proc(const std::string& target) {
       std::string(cmake_path.string() + " " + _psettings->get_command(target)),
       boost::process::std_out > stream);
 
-  _pdata = std::make_unique<thread_data>
-      (thread_data{false, std::move(child)});
+  BOOST_LOG_TRIVIAL(info) << "Setting new _pdata...";
+  _pdata.set_bool(false);
+  _pdata.set_child(std::move(child));
 
   for (std::string line;
-       _pdata->_current_child.running() && std::getline(stream, line);) {
+       _pdata._current_child.running() && std::getline(stream, line);) {
     BOOST_LOG_TRIVIAL(info) << line;
   }
 
-  _pdata->_current_child.wait();
+  _pdata._current_child.wait();
 
-  auto exit_code = _pdata->_current_child.exit_code();
+  auto exit_code = _pdata._current_child.exit_code();
 
   if (exit_code != 0) {
     BOOST_LOG_TRIVIAL(error) << "Non zero exit code. Exiting...";
-    _pdata->_terminated = true;
+    _pdata.set_bool(true);
     return false;
   } else {
     return true;
@@ -105,24 +124,26 @@ std::string builder::print_help() {
 }
 
 
-void builder::timeout_handler() {
-  BOOST_LOG_TRIVIAL(fatal) << "Timer timeout. Stopping all child processes...";
+void timeout_handler(thread_data& _pdata) {
+  BOOST_LOG_TRIVIAL(debug) << "Timer timeout. Stopping all child processes...";
   // Stop child processes
   try {
-    if (_pdata->_current_child.running()) {
-      _pdata->_current_child.terminate();
-      _pdata->_terminated = true;
+    if (_pdata._current_child.running()) {
+      _pdata._current_child.terminate();
     }
+      _pdata.set_bool(true);
+      BOOST_LOG_TRIVIAL(debug) << "_pdata set: " << _pdata._terminated;
+
   } catch (const std::exception& e) {
     BOOST_LOG_TRIVIAL(fatal) << "Terminating error: " << e.what()
-                             << " Process: " << _pdata->_current_child.id();
+                             << " Process: " << _pdata._current_child.id();
   }
 }
 
 void builder::read_settings(boost::program_options::variables_map&& vm) {
   bool install = false, pack = false;
   std::string config = "Debug";
-
+  int time = -1;
   if (vm.count("config")) {
     config = vm["config"].as<std::string>();
   }
@@ -135,10 +156,9 @@ void builder::read_settings(boost::program_options::variables_map&& vm) {
   if (vm.count("timeout")) {
     BOOST_LOG_TRIVIAL(debug)
         << "Timeout args got: " << vm["timeout"].as<int>() << ". Setting timer";
-    _ptimer = std::make_unique<timer>(
-        timer(std::chrono::seconds(vm["timeout"].as<int>()), this));
+    time = vm["timeout"].as<int>();
   }
-  _psettings = std::make_unique<settings>(settings((config), install, pack));
+  _psettings = std::make_unique<settings>(settings((config), install, pack, time));
 }
 
 void log_setup::init() {
