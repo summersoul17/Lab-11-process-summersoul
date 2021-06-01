@@ -1,0 +1,13 @@
+{
+    "build_dir": "_build",
+    "configuration": 0,
+    "install": {
+        "install": false,
+        "install_dir": "_install"
+    },
+    "pack": {
+        "pack": false,
+        "pack_archive": "project.tar.gz"
+    },
+    "timeout": -1
+}
