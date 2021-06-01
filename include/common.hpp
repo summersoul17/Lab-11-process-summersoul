@@ -54,7 +54,7 @@ class settings {
   settings(const std::string& config, bool install, bool pack, int time)
       :_config(config), _install(install), _pack(pack), _time(time){
   }
-
+//.
  private:
   std::string _config;
   bool _install,

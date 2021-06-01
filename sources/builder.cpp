@@ -30,7 +30,7 @@ int builder::vmain(boost::program_options::variables_map&& vm) {
     _timer = std::make_unique<timer>(timer(
         std::chrono::seconds(_psettings->time()), timeout_handler, _pdata));
   }
-  // execute processes
+  // execute. processes
   try {
     std::this_thread::sleep_for(std::chrono::seconds(4));
     std::shared_future<bool> pack = std::async([this, &_pdata]() -> bool {

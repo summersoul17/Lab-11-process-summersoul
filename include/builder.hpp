@@ -24,7 +24,7 @@ class builder {
   bool spawn_proc(const std::string& target, thread_data& _pdata);
  private:
   boost::program_options::options_description _desc{"Allowed options"};
-  std::unique_ptr<settings> _psettings;
+  std::unique_ptr<settings> _psettings;//.
 };
 
 class timer {
